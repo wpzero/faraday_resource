@@ -141,7 +141,7 @@ module FaradayResource
         end
 
         # array method 返回的是array[resource]
-        def array_method &block
+        def collection &block
           # self 是 base
           block.call_with_obj(self.eigenclass)
         end
