@@ -22,7 +22,102 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+
+
+such as:		
+ 
+	```
+		
+		class User
+		  include FaradayResource::Base
+		
+		  set_url 'http://localhost:5100'
+		
+		  set_content_type 'application/json'
+		
+		  get :load, 'url' => '/users/:id', 'params' => {:test => 'dfdjfk', :id => 1}
+		
+		  collection do
+		    get :get_list, 'url' => '/users', 'is_array' => true
+		  end
+		end
+	```
+	
+now you can use User class such as:
+
+
+
+	```
+		user = User.new
+		response = user.load #=> fetch data
+		user.name #=> get name
+		response.status #=> status code faraday response	
+	```
+	
+	
+	if is_array is true return response, array[user] or only response
+	
+	```
+		response, users = User.get_list #=> only when is_array is true
+		response.status #=> status code faraday response
+		users.class #=> Array, array[user]
+		
+		response = User.get_list #=> when is_array is false 
+	```
+	
+	overwrite url params
+	
+	```
+		User.get_list({
+			:url => '/other_users',
+			:params => {
+				:q => 'wp'
+			}
+		})
+		
+		#now faraday use '/other_users' and params will merge this params
+	```
+	
+	you can set custom parse function for instance_methods (default JSON.parse)
+	
+	```
+		class User
+			set_parse do |body|
+				JSON.parse(body)['entity']
+			end
+		end
+	```
+	
+	you can set custom array_parse function for is_array is true (default JSON.parse)		
+		
+	```
+		class User
+			set_array_parse do |body|
+				JSON.parse(body)['entities']
+			end
+		end
+	```
+	
+	you can set global setting (will be overwitten by class set_url..)
+	
+	```
+		FaradayResource.configure do |settings|
+		  settings.url = 'http://localhost:5100'
+		  settings.content_type = 'application/json'
+		end
+		
+	```
+	
+	note: the /users/:xxx (xxx is replaced by params['xxx'] / params[:xxx])
+	
+	
+	
+	
+	
+	
+	
+	
+
 
 ## Development
 
