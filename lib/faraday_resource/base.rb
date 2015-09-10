@@ -17,6 +17,20 @@ module FaradayResource
   module Base
     def self.included(base)
       base.extend(ClassMethods)
+
+      # 添加一个attributes的proxy
+      base.class_eval do
+        def method_missing(name, *args)
+          # 可以代理到attributes中的数据
+          if self.attributes.keys.include? name
+            return self.attributes[name]
+          elsif self.attributes.keys.include? name.to_s
+            return self.attributes[name.to_s]
+          end
+          super
+        end
+      end
+
       # 设置一个attributes来存返回的数据
       base.class_eval do
         attr_accessor :attributes
