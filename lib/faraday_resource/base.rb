@@ -1,3 +1,5 @@
+require 'faraday'
+
 # 这个是一个给proc绑定一个object的方法
 class Proc
     def call_with_obj(obj, *args)
