@@ -1,6 +1,4 @@
-require 'faraday'
-
-# 这个是一个给block绑定一个object的方法
+# 这个是一个给proc绑定一个object的方法
 class Proc
     def call_with_obj(obj, *args)
         m = nil
@@ -17,26 +15,44 @@ module FaradayResource
   module Base
     def self.included(base)
       base.extend(ClassMethods)
-
       # 添加一个attributes的proxy
       base.class_eval do
         def method_missing(name, *args)
-          # 可以代理到attributes中的数据
+          # 可以代理到attributes的取值
           if self.attributes.keys.include? name
             return self.attributes[name]
           elsif self.attributes.keys.include? name.to_s
             return self.attributes[name.to_s]
           end
+          # 可以代理到attributes的赋值
+          result = /^(.+)=$/.match(name.to_s)
+          if result && result[1] && self.attributes[result[1]]
+            # 如果第一次修改旧的记录那么就记录老的数据
+            self.stale_attributes[result[1]] = self.attributes[result[1]] unless self.stale_attributes[result[1]]
+            return self.attributes[result[1]] = args[0]
+          elsif result && result[1] && self.attributes[:"#{result[1]}"]
+            # 如果第一次修改旧的记录那么就记录老的数据
+            self.stale_attributes[:"#{result[1]}"] = self.attributes[:"#{result[1]}"] unless self.stale_attributes[:"#{result[1]}"]
+            return self.attributes[:"#{result[1]}"] = args[0]
+          end
+          # 否则不处理
           super
         end
       end
-
       # 设置一个attributes来存返回的数据
       base.class_eval do
-        attr_accessor :attributes
+        # 存储 attributes 和 旧的 attribtues
+        attr_accessor :attributes, :stale_attributes
 
+        # 初始化
         def initialize attrs={}
           @attributes = attrs
+          @stale_attributes = {}
+        end
+
+        # 判断是否有修改
+        def stale?
+          self.stale_attributes.length > 0
         end
       end
 
@@ -121,23 +137,27 @@ module FaradayResource
         end
 
         # post macro 
-        def post name, method_settings={}
-          inner_create_method name, :post, method_settings
+        def post name, method_settings={}, &method_block
+          method_block ||= lambda{|params, instance|}
+          inner_create_method name, :post, method_settings, method_block
         end
 
         # get macro
-        def get name, method_settings={}
-          inner_create_method name, :get, method_settings
+        def get name, method_settings={}, &method_block
+          method_block ||= lambda{|params, instance|}
+          inner_create_method name, :get, method_settings, method_block
         end
 
         # put macro
-        def put name, method_settings={}
-          inner_create_method name, :put, method_settings
+        def put name, method_settings={}, &method_block
+          method_block ||= lambda{|params, instance|}
+          inner_create_method name, :put, method_settings, method_block
         end
 
         # delete macro
-        def delete name, method_settings={}
-          inner_create_method name, :delete, method_settings
+        def delete name, method_settings={}, &method_block
+          method_block ||= lambda{|params, instance|}
+          inner_create_method name, :delete, method_settings, method_block
         end
 
         # array method 返回的是array[resource]
@@ -147,7 +167,7 @@ module FaradayResource
         end
 
         private 
-        def inner_create_method name, method, method_settings
+        def inner_create_method name, method, method_settings, method_block
           # 定义一个方法
           define_method name do |settings={}|
             dom_url = self.class.url || FaradayResource.config.url
@@ -169,6 +189,7 @@ module FaradayResource
             response = conn.send method do |req|
               req.url re_url
               req.headers['Content-Type'] = settings['Content-Type'] || method_settings['Content-Type'] || self.class.content_type || FaradayResource.config.content_type
+              params = method_block.call(params, self)
               req.params = params
             end
 
@@ -177,6 +198,7 @@ module FaradayResource
                 parse = JSON.method(:parse)
                 parse = self.class.parse if self.class.parse
                 self.attributes = parse.call(response.body)
+                self.stale_attributes = {}
               end
             end
             return response

@@ -55,7 +55,11 @@ now you can use User class such as:
 ```
 
 	
-	if is_array is true return response, array[user] or only response
+
+if is_array is true return response and array[user] or only response
+
+	
+	
 	
 ```
 	response, users = User.get_list #=> only when is_array is true
@@ -65,7 +69,8 @@ now you can use User class such as:
 	response = User.get_list #=> when is_array is false 
 ```
 	
-	overwrite url params
+overwrite url params
+
 	
 ```
 	User.get_list({
@@ -77,18 +82,25 @@ now you can use User class such as:
 	
 	#now faraday use '/other_users' and params will merge this params
 ```
+
 	
-	you can set custom parse function for instance_methods (default JSON.parse)
+you can set custom parse function for instance_methods (default JSON.parse)
+
 	
+
 ```
+
 	class User
 		set_parse do |body|
 			JSON.parse(body)['entity']
 		end
 	end
 ```
+
 	
-	you can set custom array_parse function for is_array is true (default JSON.parse)		
+you can set custom array_parse function for is_array is true (default JSON.parse)
+
+		
 		
 ```
 	class User
@@ -97,8 +109,10 @@ now you can use User class such as:
 		end
 	end
 ```
+
 	
-	you can set global setting (will be overwitten by class set_url..)
+you can set global setting (will be overwitten by class set_url..)
+
 	
 ```
 	FaradayResource.configure do |settings|
@@ -108,14 +122,59 @@ now you can use User class such as:
 	
 ```
 	
-	note: the /users/:xxx (xxx is replaced by params['xxx'] / params[:xxx])
+url params xxx will replaced by params[:xxx] or params[xxx]		
+	
+```			
+	class User
+	
+		get :load, 'url' => '/users/:id', 'params' => {:test => 'dfdjfk', :id => 1} do |params, instance|
+		    params['test'] = instance.name
+		    params
+		end
+	end
+```
 	
 	
+get/post/put/delete methods (not in collection) can accept block (params, instance then return params)
+
 	
+```			
+	class User
 	
+		put :update, 'url' => '/users/:id', 'params' => {} do |params, instance|
+		    params['user'] = {
+		    	:name => instance.name,
+		    	:age => instance.age
+		    }
+		    params
+		end
+	end
 	
+	u = User.new({id: 2})
+	u.load
+	u.name = 'zkf'
+	u.update
+```
 	
-	
+can assign value for attributes, check stale?
+
+```
+	u = User.new({id: 2})
+	u.load
+	u.name #=> 'wp'
+	u.name = 'zkf'
+	u.name #=> 'zkf'
+	u.stale? #=> true
+	u.stale_attributes #=> {'name': 'wp'}
+```	
+
+
+
+##other
+
+I think this gem will help communicating between app servers (soa)
+
+我水平有限(low)，如果有什么好的想法(good tips)，可以联系我（concat me） qq:524162910  email:wpcreep@gmail.com
 	
 
 

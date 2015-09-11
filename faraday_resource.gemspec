@@ -9,8 +9,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["wpzero"]
   spec.email         = ["wangping@galiumsof.com"]
 
-  spec.summary       = %q{use faraday http client to create REST resource similar to angular resource}
-  spec.description   = %q{use faraday http client to create REST resource similar to angular resource}
+  spec.summary       = %q{REST resource similar to angular resource based on faraday}
+  spec.description   = %q{REST resource similar to angular resource based on faraday}
   spec.homepage      = "https://github.com/wpzero/faraday_resource"
 
   # Prevent pushing this gem to RubyGems.org by setting 'allowed_push_host', or
