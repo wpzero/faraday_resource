@@ -59,7 +59,7 @@ module FaradayResource
       end
 
       class << base
-        attr_reader :url, :content_type, :parse, :array_parse
+        attr_reader :url, :content_type, :parse, :array_parse, :timeout
 
         # 这个是base的eigenclass
         eigenclass = self
@@ -70,48 +70,62 @@ module FaradayResource
 
         class << eigenclass
           # self 为base的eigenclass的eigenclass
-          def post name, method_settings={}
+          def post name, method_settings={}, &method_block
             # self 为base的eigenclass
-            inner_create_method name, :post, method_settings
+            method_block ||= lambda{|params, req|}
+            inner_create_method name, :post, method_settings, method_block
           end
 
-          def get name, method_settings={}
-            inner_create_method name, :get, method_settings
+          def get name, method_settings={}, &method_block
+            method_block ||= lambda{|params, req|}
+            inner_create_method name, :get, method_settings, method_block
           end
 
-          def put name, method_settings={}
-            inner_create_method name, :put, method_settings
+          def put name, method_settings={}, &method_block
+            method_block ||= lambda{|params, req|}
+            inner_create_method name, :put, method_settings, method_block
           end
 
-          def delete name, method_settings={}
-            inner_create_method name, :delete, method_settings
+          def delete name, method_settings={}, &method_block
+            method_block ||= lambda{|params, req|}
+            inner_create_method name, :delete, method_settings, method_block
+          end
+
+          def dom_url
+            @dom_url || @dom_url = self.url || FaradayResource.config.url
+          end
+
+          def conn
+            @conn || @conn = Faraday.new(dom_url) do |faraday|
+              faraday.adapter  Faraday.default_adapter
+            end
           end
 
           private
-          def inner_create_method name, method, method_settings
+          def inner_create_method name, method, method_settings, method_block
             # 定义一个方法
             define_method name do |settings={}|
               # self 为 base
-              dom_url = self.url || FaradayResource.config.url
               re_url = settings['url'] || settings[:url] || method_settings['url'] || method_settings[:url]
-              params = (method_settings['params'] || method_settings[:params] || {}).merge(settings['params'] || settings[:params] || {})
+              timeout = settings['timeout'] || settings[:timout] || self.timeout || FaradayResource.config.timeout
+              params = (method_settings['params'] || method_settings[:params] || {})
               if !re_url
                 raise 'no relative path for the method'
               end
               if !dom_url
                 raise 'no domain path for the method'
               end
-              # 处理url的函数
-              re_url = self.method(:parse_url).call re_url, params
-              # 组建一个faraday 的 conn
-              conn = Faraday.new(dom_url) do |faraday|
-                faraday.adapter  Faraday.default_adapter
-              end
               # 构建一个 发出一个post
               response = conn.send method do |req|
-                req.url re_url
                 req.headers['Content-Type'] = settings['Content-Type'] || method_settings['Content-Type'] || self.content_type || FaradayResource.config.content_type
+                # params = method_block.call(params, req)
+                req.options.timeout = timeout if timeout
                 req.params = params
+                method_block.call(params, req)
+                req.params = req.params.merge(settings['params'] || settings[:params] || {})
+                # 处理url的函数
+                re_url = self.method(:parse_url).call re_url, req.params
+                req.url re_url
               end
 
               results = []
@@ -138,27 +152,27 @@ module FaradayResource
           end
         end
 
-        # post macro 
+        # post macro
         def post name, method_settings={}, &method_block
-          method_block ||= lambda{|params, instance|}
+          method_block ||= lambda{|params, instance, req|}
           inner_create_method name, :post, method_settings, method_block
         end
 
         # get macro
         def get name, method_settings={}, &method_block
-          method_block ||= lambda{|params, instance|}
+          method_block ||= lambda{|params, instance, req|}
           inner_create_method name, :get, method_settings, method_block
         end
 
         # put macro
         def put name, method_settings={}, &method_block
-          method_block ||= lambda{|params, instance|}
+          method_block ||= lambda{|params, instance, req|}
           inner_create_method name, :put, method_settings, method_block
         end
 
         # delete macro
         def delete name, method_settings={}, &method_block
-          method_block ||= lambda{|params, instance|}
+          method_block ||= lambda{|params, instance, req|}
           inner_create_method name, :delete, method_settings, method_block
         end
 
@@ -168,31 +182,37 @@ module FaradayResource
           block.call_with_obj(self.eigenclass)
         end
 
-        private 
+        def dom_url
+          self.class.dom_url
+        end
+
+        def conn
+          self.class.conn
+        end
+
+        private
         def inner_create_method name, method, method_settings, method_block
           # 定义一个方法
           define_method name do |settings={}|
-            dom_url = self.class.url || FaradayResource.config.url
             re_url = settings['url'] || settings[:url] || method_settings['url'] || method_settings[:url]
-            params = (method_settings['params'] || method_settings[:params] || {}).merge(settings['params'] || settings[:params] || {})
+            params = (method_settings['params'] || method_settings[:params] || {})
+            timeout = settings['timeout'] || settings[:timeout] || FaradayResource.config.timeout
             if !re_url
               raise 'no relative path for the method'
             end
             if !dom_url
               raise 'no domain path for the method'
             end
-            # 处理url的函数
-            re_url = self.class.method(:parse_url).call re_url, params
-            # 组建一个faraday 的 conn
-            conn = Faraday.new(dom_url) do |faraday|
-              faraday.adapter  Faraday.default_adapter
-            end
             # 构建一个 发出一个post
             response = conn.send method do |req|
-              req.url re_url
               req.headers['Content-Type'] = settings['Content-Type'] || method_settings['Content-Type'] || self.class.content_type || FaradayResource.config.content_type
-              params = method_block.call(params, self)
+              req.options.timout = timeout if timeout
               req.params = params
+              method_block.call(params, self, req)
+              req.params = req.params.merge(settings['params'] || settings[:params] || {})
+              # 处理url的函数
+              re_url = self.class.method(:parse_url).call re_url, req.params
+              req.url re_url
             end
 
             if response.status == 200
@@ -243,6 +263,12 @@ module FaradayResource
     def set_array_parse &block
       self.instance_eval do
         @array_parse = block
+      end
+    end
+
+    def set_timeout timeout
+      self.instance_eval do
+        @timeout = timeout
       end
     end
 

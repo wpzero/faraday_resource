@@ -1,8 +1,6 @@
 # FaradayResource
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/faraday_resource`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+A backbone model like ruby http wrapper : )
 
 ## Installation
 
@@ -24,25 +22,25 @@ Or install it yourself as:
 
 
 
-such as:		
- 
+such as:
+
 ```
-	
+
 	class User
 	  include FaradayResource::Base
-	
+
 	  set_url 'http://localhost:5100'
-	
+
 	  set_content_type 'application/json'
-	
+
 	  get :load, 'url' => '/users/:id', 'params' => {:test => 'dfdjfk', :id => 1}
-	
+
 	  collection do
 	    get :get_list, 'url' => '/users', 'is_array' => true
 	  end
 	end
 ```
-	
+
 now you can use User class such as:
 
 
@@ -51,27 +49,27 @@ now you can use User class such as:
 	user = User.new
 	response = user.load #=> fetch data
 	user.name #=> get name
-	response.status #=> status code faraday response	
+	response.status #=> status code faraday response
 ```
 
-	
+
 
 if is_array is true return response and array[user] or only response
 
-	
-	
-	
+
+
+
 ```
 	response, users = User.get_list #=> only when is_array is true
 	response.status #=> status code faraday response
 	users.class #=> Array, array[user]
-	
-	response = User.get_list #=> when is_array is false 
+
+	response = User.get_list #=> when is_array is false
 ```
-	
+
 overwrite url params
 
-	
+
 ```
 	User.get_list({
 		:url => '/other_users',
@@ -79,14 +77,14 @@ overwrite url params
 			:q => 'wp'
 		}
 	})
-	
+
 	#now faraday use '/other_users' and params will merge this params
 ```
 
-	
+
 you can set custom parse function for instance_methods (default JSON.parse)
 
-	
+
 
 ```
 
@@ -97,11 +95,11 @@ you can set custom parse function for instance_methods (default JSON.parse)
 	end
 ```
 
-	
+
 you can set custom array_parse function for is_array is true (default JSON.parse)
 
-		
-		
+
+
 ```
 	class User
 		set_array_parse do |body|
@@ -110,37 +108,37 @@ you can set custom array_parse function for is_array is true (default JSON.parse
 	end
 ```
 
-	
+
 you can set global setting (will be overwitten by class set_url..)
 
-	
+
 ```
 	FaradayResource.configure do |settings|
 	  settings.url = 'http://localhost:5100'
 	  settings.content_type = 'application/json'
 	end
-	
+
 ```
-	
-url params xxx will replaced by params[:xxx] or params[xxx]		
-	
-```			
+
+url params xxx will replaced by params[:xxx] or params[xxx]
+
+```
 	class User
-	
+
 		get :load, 'url' => '/users/:id', 'params' => {:test => 'dfdjfk', :id => 1} do |params, instance|
 		    params['test'] = instance.name
 		    params
 		end
 	end
 ```
-	
-	
+
+
 get/post/put/delete methods (not in collection) can accept block (params, instance then return params)
 
-	
-```			
+
+```
 	class User
-	
+
 		put :update, 'url' => '/users/:id', 'params' => {} do |params, instance|
 		    params['user'] = {
 		    	:name => instance.name,
@@ -149,13 +147,13 @@ get/post/put/delete methods (not in collection) can accept block (params, instan
 		    params
 		end
 	end
-	
+
 	u = User.new({id: 2})
 	u.load
 	u.name = 'zkf'
 	u.update
 ```
-	
+
 can assign value for attributes, check stale?
 
 ```
@@ -166,7 +164,7 @@ can assign value for attributes, check stale?
 	u.name #=> 'zkf'
 	u.stale? #=> true
 	u.stale_attributes #=> {'name': 'wp'}
-```	
+```
 
 
 
@@ -174,8 +172,6 @@ can assign value for attributes, check stale?
 
 I think this gem will help communicating between app servers (soa)
 
-我水平有限(low)，如果有什么好的想法(good tips)，可以联系我（concat me） qq:524162910  email:wpcreep@gmail.com
-	
 
 
 ## Development
